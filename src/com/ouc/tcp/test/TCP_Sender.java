@@ -37,7 +37,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 		flag = 0;
 		
 		//等待ACK报文
-		//waitACK();
+//		waitACK();
 		while (flag==0);
 	}
 	
@@ -85,12 +85,18 @@ public class TCP_Sender extends TCP_Sender_ADT {
 	//接收到ACK报文：检查校验和，将确认号插入ack队列;NACK的确认号为－1；不需要修改
 	public void recv(TCP_PACKET recvPack) {
 		System.out.println("Receive ACK Number： "+ recvPack.getTcpH().getTh_ack());
-		ackQueue.add(recvPack.getTcpH().getTh_ack());
-	    System.out.println();	
-	   
-	    //处理ACK报文
-	    waitACK();
-	   
+		if(CheckSum.computeChkSum(recvPack) == recvPack.getTcpH().getTh_sum()) {
+			this.ackQueue.add(recvPack.getTcpH().getTh_ack());
+			System.out.println();
+		    //处理ACK报文
+		    waitACK();
+		}
+		else {
+			// 出错重发
+			udt_send(tcpPack);
+			flag = 0;
+			System.out.println();
+		}
 	}
 	
 }
