@@ -15,7 +15,8 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 	
 	private TCP_PACKET ackPack;	//回复的ACK报文段
 	int sequence=1;//用于记录当前待接收的包序号，注意包序号不完全是
-		
+	int lastSeq = 0; // 上一个包序号 用于识别重复包
+	
 	/*构造函数*/
 	public TCP_Receiver() {
 		super();	//调用超类构造函数
@@ -32,16 +33,23 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 			ackPack = new TCP_PACKET(tcpH, tcpS, recvPack.getSourceAddr());
 			tcpH.setTh_sum(CheckSum.computeChkSum(ackPack));
 			//回复ACK报文段
-			reply(ackPack);			
+			reply(ackPack);		
+			int curSeq = recvPack.getTcpH().getTh_seq();
+			if(lastSeq != curSeq) {
+				lastSeq = curSeq; // 更新包序号
+				//将接收到的正确有序的数据插入data队列，准备交付
+				dataQueue.add(recvPack.getTcpS().getData());	
+				
+				//交付数据（每20组数据交付一次）
+				if(dataQueue.size() == 20) 
+					deliver_data();	
+			}
 			
-			//将接收到的正确有序的数据插入data队列，准备交付
-			dataQueue.add(recvPack.getTcpS().getData());				
-			sequence++;
 		}else{
 			System.out.println("Recieve Computed: "+CheckSum.computeChkSum(recvPack));
 			System.out.println("Recieved Packet"+recvPack.getTcpH().getTh_sum());
-			System.out.println("Problem: Packet Number: "+recvPack.getTcpH().getTh_seq()+" + InnerSeq:  "+sequence);
-			tcpH.setTh_ack(-1); // check sum错误
+			tcpH.setTh_ack(lastSeq);  // 将ack设置为上次接收成功的数据序号起始点
+			System.out.println("last Sequence:" + lastSeq);
 			ackPack = new TCP_PACKET(tcpH, tcpS, recvPack.getSourceAddr());
 			tcpH.setTh_sum(CheckSum.computeChkSum(ackPack));
 			//回复ACK报文段
@@ -50,10 +58,6 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 		
 		System.out.println();
 		
-		
-		//交付数据（每20组数据交付一次）
-		if(dataQueue.size() == 20) 
-			deliver_data();	
 	}
 
 	@Override
@@ -98,7 +102,7 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 		 * 6 丢包/延迟
 		 * 7 出错/丢包/延迟
 		 */
-		tcpH.setTh_eflag((byte)1);	//eFlag=0，信道无错误
+		tcpH.setTh_eflag((byte)2);	//eFlag=0，信道无错误
 				
 		//发送数据报
 		client.send(replyPack);

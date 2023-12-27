@@ -13,6 +13,9 @@ public class TCP_Sender extends TCP_Sender_ADT {
 	
 	private TCP_PACKET tcpPack;	//待发送的TCP数据报
 	private volatile int flag = 0;
+
+	/** 超时重传计时器 */
+	private UDT_Timer timer = null;
 	
 	/*构造函数*/
 	public TCP_Sender() {
@@ -35,9 +38,11 @@ public class TCP_Sender extends TCP_Sender_ADT {
 		//发送TCP数据报
 		udt_send(tcpPack);
 		flag = 0;
-		
+		// 启动计时器
+		timer = new UDT_Timer();
+		UDT_RetransTask reTrans = new UDT_RetransTask(client, tcpPack);
+		timer.schedule(reTrans, 3000 , 3000); // 每隔三秒重传
 		//等待ACK报文
-//		waitACK();
 		while (flag==0);
 	}
 	
@@ -55,7 +60,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 		 * 6 丢包/延迟
 		 * 7 出错/丢包/延迟
 		 */
-		tcpH.setTh_eflag((byte)1);		
+		tcpH.setTh_eflag((byte)2);
 		//System.out.println("to send: "+stcpPack.getTcpH().getTh_seq());				
 		//发送数据报
 		client.send(stcpPack);
@@ -72,7 +77,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 			if (currentAck == tcpPack.getTcpH().getTh_seq()){
 				System.out.println("Clear: "+tcpPack.getTcpH().getTh_seq());
 				flag = 1;
-				//break;
+				timer.cancel(); // 这里是确认收到的唯一位置 所以确认了收到就取消这个计时器
 			}else{
 				System.out.println("Retransmit: "+tcpPack.getTcpH().getTh_seq());
 				udt_send(tcpPack);
