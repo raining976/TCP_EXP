@@ -37,23 +37,13 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
                 reply(ackPack);
 
                 expectedSeq++;
+
                 dataQueue.add(recvPack.getTcpS().getData());
                 //交付数据（每20组数据交付一次）
                 if (dataQueue.size() == 20)
                     deliver_data();
             }
-            else {
-                System.out.println("Recieve Computed: " + CheckSum.computeChkSum(recvPack));
-                System.out.println("Recieved Packet" + recvPack.getTcpH().getTh_sum());
-                tcpH.setTh_ack(expectedSeq - 1);  // 将ack设置为上次接收成功的数据序号起始点
-                ackPack = new TCP_PACKET(tcpH, tcpS, recvPack.getSourceAddr());
-                tcpH.setTh_sum(CheckSum.computeChkSum(ackPack));
-                //回复ACK报文段
-                reply(ackPack);
-            }
         }
-
-
     }
 
 

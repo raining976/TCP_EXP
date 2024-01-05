@@ -4,9 +4,6 @@ import com.ouc.tcp.client.Client;
 import com.ouc.tcp.client.UDT_Timer;
 import com.ouc.tcp.message.TCP_PACKET;
 
-import java.sql.Time;
-import java.util.Queue;
-import java.util.Timer;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class SlideWindow {
