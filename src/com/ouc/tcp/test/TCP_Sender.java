@@ -4,22 +4,20 @@
 package com.ouc.tcp.test;
 
 import com.ouc.tcp.client.TCP_Sender_ADT;
-import com.ouc.tcp.client.UDT_RetransTask;
-import com.ouc.tcp.client.UDT_Timer;
 import com.ouc.tcp.message.*;
-import com.ouc.tcp.tool.TCP_TOOL;
 
 public class TCP_Sender extends TCP_Sender_ADT {
 
     private TCP_PACKET tcpPack;    //待发送的TCP数据报
     private volatile int flag = 1;
-    private SlideWindow slideWindow;
+//    private SenderSlideWindow slideWindow;
+    private SenderSlidingWindow slideWindow;
 
     /*构造函数*/
     public TCP_Sender() {
         super();    //调用超类构造函数
         super.initTCP_Sender(this);        //初始化TCP发送端
-        slideWindow = new SlideWindow(client);
+        slideWindow = new SenderSlidingWindow(client);
     }
 
     @Override
@@ -34,21 +32,20 @@ public class TCP_Sender extends TCP_Sender_ADT {
         tcpH.setTh_sum(CheckSum.computeChkSum(tcpPack));
         tcpPack.setTcpH(tcpH);
 
-        //发送TCP数据报
-        udt_send(tcpPack);
+        if(slideWindow.isFull()){
+            flag = 0;
+        }
 
+        //等待ACK报文
+        while (flag == 0) ;
         try {
-            slideWindow.addPacket(tcpPack);
+            slideWindow.putPacket(tcpPack.clone());
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("Send Seq:" + dataIndex + 1);
-        if (slideWindow.isFull()) {
-            System.out.println("Queue is full!!!!!!!!");
-            flag = 0;
-        }
-        //等待ACK报文
-        while (flag == 0) ;
+
+        //发送TCP数据报
+        udt_send(tcpPack);
     }
 
     @Override
@@ -82,7 +79,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
         int currentAck = recvPack.getTcpH().getTh_ack();
         System.out.println("Receive ACK Number： " + recvPack.getTcpH().getTh_ack());
         if (CheckSum.computeChkSum(recvPack) == recvPack.getTcpH().getTh_sum()) {
-            slideWindow.receiveAck(currentAck);
+            slideWindow.receiveACK(currentAck);
             if (!slideWindow.isFull()) {
                 flag = 1;
             }

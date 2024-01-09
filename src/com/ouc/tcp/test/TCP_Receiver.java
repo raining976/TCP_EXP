@@ -14,7 +14,8 @@ import com.ouc.tcp.tool.TCP_TOOL;
 public class TCP_Receiver extends TCP_Receiver_ADT {
 
     private TCP_PACKET ackPack;    //回复的ACK报文段
-    private int expectedSeq = 1;
+//    private RecvSlideWindow recvWindow = new RecvSlideWindow(client);
+    private ReceiverSlidingWindow receiverSlidingWindow = new ReceiverSlidingWindow(client);
 
     /*构造函数*/
     public TCP_Receiver() {
@@ -27,22 +28,20 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
     public void rdt_recv(TCP_PACKET recvPack) {
         //检查校验码，生成ACK
         if (CheckSum.computeChkSum(recvPack) == recvPack.getTcpH().getTh_sum()) {
-            int recvSeq = recvPack.getTcpH().getTh_seq();
-            if (expectedSeq == recvSeq) {
-                //生成ACK报文段（设置确认号）
-                tcpH.setTh_ack(recvPack.getTcpH().getTh_seq());
-                ackPack = new TCP_PACKET(tcpH, tcpS, recvPack.getSourceAddr());
-                tcpH.setTh_sum(CheckSum.computeChkSum(ackPack));
-                //回复ACK报文段
-                reply(ackPack);
+            int ackSeq = -1;
 
-                expectedSeq++;
-
-                dataQueue.add(recvPack.getTcpS().getData());
-                //交付数据（每20组数据交付一次）
-                if (dataQueue.size() == 20)
-                    deliver_data();
+            try {
+                ackSeq = receiverSlidingWindow.receivePacket(recvPack.clone());
+            } catch (CloneNotSupportedException e) {
+                throw new RuntimeException(e);
             }
+
+            //生成ACK报文段（设置确认号）
+            tcpH.setTh_ack(ackSeq);
+            ackPack = new TCP_PACKET(tcpH, tcpS, recvPack.getSourceAddr());
+            tcpH.setTh_sum(CheckSum.computeChkSum(ackPack));
+            //回复ACK报文段
+            reply(ackPack);
         }
     }
 
@@ -50,29 +49,7 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
     @Override
     //交付数据（将数据写入文件）；不需要修改
     public void deliver_data() {
-        //检查dataQueue，将数据写入文件
-        File fw = new File("recvData.txt");
-        BufferedWriter writer;
 
-        try {
-            writer = new BufferedWriter(new FileWriter(fw, true));
-
-            //循环检查data队列中是否有新交付数据
-            while (!dataQueue.isEmpty()) {
-                int[] data = dataQueue.poll();
-
-                //将数据写入文件
-                for (int i = 0; i < data.length; i++) {
-                    writer.write(data[i] + "\n");
-                }
-
-                writer.flush();        //清空输出缓存
-            }
-            writer.close();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
     }
 
     @Override

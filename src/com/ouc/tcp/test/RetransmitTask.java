@@ -8,16 +8,17 @@ import java.util.TimerTask;
 
 public class RetransmitTask extends TimerTask {
     Client sendClient;
-    Queue<TCP_PACKET> packets;
-    RetransmitTask(Client client, Queue<TCP_PACKET> packets){
+    TCP_PACKET packet;
+    SenderSlidingWindow window;
+    RetransmitTask(Client client, TCP_PACKET packet, SenderSlidingWindow window){
         sendClient = client;
-        this.packets = packets;
+        this.packet = packet;
+        this.window = window;
     }
 
     @Override
     public void run(){
-        for(TCP_PACKET p:packets){
-            sendClient.send(p);
-        }
+        window.slowStart();
+        sendClient.send(packet);
     }
 }
