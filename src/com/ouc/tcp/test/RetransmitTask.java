@@ -10,15 +10,14 @@ public class RetransmitTask extends TimerTask {
     Client sendClient;
     TCP_PACKET packet;
     SenderSlidingWindow window;
-    RetransmitTask(Client client, TCP_PACKET packet, SenderSlidingWindow window){
-        sendClient = client;
-        this.packet = packet;
+    RetransmitTask(SenderSlidingWindow window){
         this.window = window;
     }
 
     @Override
     public void run(){
         window.slowStart();
-        sendClient.send(packet);
+
+        window.retransmit();
     }
 }
